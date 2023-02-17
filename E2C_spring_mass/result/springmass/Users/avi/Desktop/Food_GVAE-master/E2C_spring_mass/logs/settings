@@ -1,0 +1,12 @@
+{
+  "env": "springmass",
+  "propor": 0.75,
+  "batch_size": 128,
+  "lr": 0.0005,
+  "decay": 0.001,
+  "lam": 0.25,
+  "num_iter": 5000,
+  "iter_save": 1000,
+  "log_dir": "/Users/avi/Desktop/Food_GVAE-master/E2C_spring_mass/logs",
+  "seed": 0
+}
