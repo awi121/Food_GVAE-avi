@@ -11,6 +11,8 @@ from datasets import *
 import numpy as np
 import Data as sampler
 import os
+from VAE import VAE
+import pdb
 from torchsummary import summary
 
 torch.set_default_dtype(torch.float64)
@@ -18,8 +20,8 @@ torch.set_default_dtype(torch.float64)
 device = torch.device("cpu")
 
 
-datasets = {'springmass': spring_mass}
-settings = {'springmass': (2, 2, 1), 'pendulum': (4608, 3, 1)}
+datasets = {'springmass': spring_mass,'experimental':experimental}
+settings = {'springmass': (2, 2, 1), 'pendulum': (4608, 3, 1),'experimental':(4,4,1)}
 num_eval = 10 # number of images evaluated on tensorboard
 
 samplers = {'springmass': sampler}
@@ -49,7 +51,7 @@ def train(model, train_loader, lam, optimizer):
         u = u.double().to(device)
         x_next = x_next.view(-1, model.obs_dim).double().to(device)
         optimizer.zero_grad()
-        x_recon, x_next_pred, q_z, q_z_next_pred, q_z_next = model(x, u, x_next)
+        x_recon, x_next_pred, q_z, q_z_next_pred, q_z_next ,_= model(x, u, x_next)
 
         loss = compute_loss(x, x_next, q_z_next, x_recon, x_next_pred, q_z, q_z_next_pred, lam)
 
@@ -76,7 +78,7 @@ def evaluate(model, test_loader):
             u = u.double().to(device)
             x_next = x_next.view(-1, model.obs_dim).double().to(device)
 
-            x_recon, x_next_pred, q_z, q_z_next_pred, q_z_next = model(x, u, x_next)
+            x_recon, x_next_pred, q_z, q_z_next_pred, q_z_next ,_= model(x, u, x_next)
             loss_1, loss_2 = compute_log_likelihood(x, x_recon, x_next, x_next_pred)
             state_loss += loss_1
             next_state_loss += loss_2
@@ -143,6 +145,7 @@ def main(args):
     test_loader = DataLoader(test_set, batch_size=batch_size, shuffle=False, drop_last=False)
     obs_dim, z_dim, u_dim = settings[env_name]
     model = E2C(obs_dim=obs_dim, z_dim=z_dim, u_dim=u_dim, env=env_name).to(device)
+    #model= VAE()
     #print(summary(model, input_size=(1,))) 
     optimizer = optim.Adam(model.parameters(), betas=(0.9, 0.999), eps=1e-8, lr=lr, weight_decay=weight_decay)
 
@@ -163,22 +166,17 @@ def main(args):
         print('State loss: ' + str(state_loss))
         print('Next state loss: ' + str(next_state_loss))
 
-        # ...log the running loss
-        #writer.add_scalar('training loss', avg_loss, i)
-        #writer.add_scalar('state loss', state_loss, i)
-        #writer.add_scalar('next state loss', next_state_loss, i)
-
-        # save model
         if (i + 1) % iter_save == 0:
            #writer.add_figure('actual vs. predicted observations',
-            #                  plot_preds(model, env_name, num_eval),
-            #                  global_step=i)
+            plot_preds(model, env_name, num_eval)
+                             # global_step=i)
             print('Saving the model.............')
 
             torch.save(model.state_dict(), result_path + '/model_' + str(i + 1))
             with open(result_path + '/loss_' + str(i + 1), 'w') as f:
                 f.write('\n'.join([str(state_loss), str(next_state_loss)]))
-
+    torch.save(model.state_dict(), result_path + '/model_' + str(i + 1))
+    plot_preds(model, env_name, num_eval)
    # writer.close()
 
 if __name__ == "__main__":
@@ -187,7 +185,7 @@ if __name__ == "__main__":
     # the default value is used for the planar task
     parser.add_argument('--env',default='springmass', type=str, help='the environment used for training')
     parser.add_argument('--propor', default=3/4, type=float, help='the proportion of data used for training')
-    parser.add_argument('--batch_size', default=128, type=int, help='batch size')
+    parser.add_argument('--batch_size', default=512, type=int, help='batch size')
     parser.add_argument('--lr', default=0.0005, type=float, help='the learning rate')
     parser.add_argument('--decay', default=0.001, type=float, help='the L2 regularization')
     parser.add_argument('--lam', default=0.25, type=float, help='the weight of the consistency term')

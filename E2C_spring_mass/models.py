@@ -2,9 +2,9 @@ from torch import nn
 
 from normal import *
 from networks import *
+import pdb
 
-
-
+from torch.autograd import Variable
 import torch
 from torch import nn
 from normal import NormalDistribution
@@ -50,6 +50,7 @@ class Transition(nn.Module):
         super(Transition, self).__init__()
         self.net = net  # network to output the last layer before predicting A_t, B_t and o_t
         self.net.apply(weights_init)
+        #pdb.set_trace()
         self.h_dim = self.net[-3].out_features
         self.z_dim = z_dim
         self.u_dim = u_dim
@@ -146,7 +147,7 @@ class springTransition(Transition):
 
 
 class E2C(nn.Module):
-    def __init__(self, obs_dim, z_dim, u_dim, env = 'springmass'):
+    def __init__(self, obs_dim, z_dim, u_dim, env = 'experimental'):
         super(E2C, self).__init__()
 
         self.obs_dim = obs_dim
@@ -165,6 +166,7 @@ class E2C(nn.Module):
         :param x:
         :return: mean and log variance of q(z | x)
         """
+        #print(x.shape)
         return self.encoder(x)
 
     def decode(self, z):
@@ -187,6 +189,7 @@ class E2C(nn.Module):
         return mean + torch.mul(epsilon, sigma)
 
     def forward(self, x, u, x_next):
+        #pdb.set_trace()
         mu, logvar = self.encode(x)
         z = self.reparam(mu, logvar)
         q_z = NormalDistribution(mu, logvar)
@@ -198,7 +201,7 @@ class E2C(nn.Module):
         mu_next, logvar_next = self.encode(x_next)
         q_z_next = NormalDistribution(mean=mu_next, logvar=logvar_next)
 
-        return x_recon, x_next_pred, q_z, q_z_next_pred, q_z_next
+        return x_recon, x_next_pred, q_z, q_z_next_pred, q_z_next,z
 
     def predict(self, x, u):
         mu, logvar = self.encoder(x)

@@ -3,14 +3,18 @@ import torch.nn.functional as F
 import torch
 from numpy.linalg import eig
 import numpy as np
+import pdb
+
+torch.set_default_dtype(torch.float32)
 
 class VAE(nn.Module):
-    def __init__(self, enc_out_dim=2, latent_dim=2, input_height=2,lr=1e-3,hidden_layers=128):
+    def __init__(self, obs_dim=2,enc_out_dim=2, latent_dim=2, input_height=2,lr=1e-3,hidden_layers=128):
         super(VAE, self).__init__()
         self.lr=lr
         self.count=0
         self.kl_weight=0.1
         self.flatten = nn.Flatten()
+        self.obs_dim=obs_dim
         self.latent_dim=latent_dim
         self.linear_relu_stack = nn.Sequential(
             nn.Linear(input_height, hidden_layers),
@@ -37,7 +41,7 @@ class VAE(nn.Module):
         )
 
         # for the gaussian likelihood
-        self.log_scale = nn.Parameter(torch.Tensor([0.0]))
+        self.log_scale = nn.Parameter(torch.Tensor([0.0]).float())
         self.optimizer=self.configure_optimizers(lr=lr)
 
     def reparametrize(self,mu,logstd):
@@ -97,22 +101,24 @@ class VAE(nn.Module):
         running_loss=[0.,0.,0.]
         lin_ap=[]
 
-        inp=torch.tensor([0],dtype=torch.float).to(device)
+        inp=torch.tensor([0.],dtype='float32').to(device)
         for i in iter(batch):
+            #pdb.set_trace()
             self.optimizer.zero_grad()
-            x = i[0].to(device)
-            y = i[1].to(device)            
+            x = i[0].to(device).dtype('float32')
+            y = i[2].to(device).dtype('float32')
 
             # encode x to get the mu and variance parameters
-            x_encoded, mu, std = self.forward(x[:,:-1])
+            x_encoded, mu, std = self.forward(x)
 
             q=torch.distributions.Normal(mu,std)
             z=q.rsample()
+            #pdb.set_trace()
 
             # decoded
             x_hat, A, B = self.decoder(z,inp)
 
-            y_encoded, muy, stdy = self.forward(y[:,:-1])
+            y_encoded, muy, stdy = self.forward(y)
             qy=torch.distributions.Normal(muy,stdy)
             ztp1=qy.rsample()  
 
@@ -145,10 +151,10 @@ class VAE(nn.Module):
             running_loss=[0.,0.,0.]
             for i in iter(batch):
                 self.optimizer.zero_grad()
-                x = i[0].to(device)
-                y = i[1].to(device)   
+                x = i[0].to(device).dtype('float32')
+                y = i[2].to(device).dtype('float32')
                 # encode x to get the mu and variance parameters
-                x_encoded, mu, std = self.forward(x[:,:-1])
+                x_encoded, mu, std = self.forward(x)
 
                 q=torch.distributions.Normal(mu,std)
                 z=q.rsample()
