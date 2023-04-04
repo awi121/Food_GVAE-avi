@@ -1,3 +1,0 @@
-[submodule "gym"]
-	path = gym
-	url = https://github.com/ethanluoyc/gym/tree/pendulum_internal
